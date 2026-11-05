@@ -14,6 +14,7 @@ function switchToPage(page) {
     else if (page === "redirects") loadRedirects();
     else if (page === "darkmode") loadDarkMode();
     else if (page === "xdim") loadXDim();
+    else if (page === "xfocus") loadXFocus();
     else if (page === "jstoggle") loadJsToggle();
     else if (page === "nocookie") loadNoCookie();
     else if (page === "livecss") loadLiveCSS();
@@ -24,6 +25,7 @@ function switchToPage(page) {
     else if (page === "tiktok") loadTikTok();
     else if (page === "archive") loadArchive();
     else if (page === "jsonformat") loadJsonFormat();
+    else if (page === "storage") loadStorage();
     else if (page === "summarize") loadSummarize();
     else if (page === "music") { loadMusicHistory(); loadAcrFields(); }
   };
@@ -647,6 +649,35 @@ xdimHueSlider.addEventListener("input", () => {
 xdimHueSlider.addEventListener("change", async () => {
   xdimCustomHue = parseInt(xdimHueSlider.value);
   await chrome.storage.local.set({ xdim_customHue: xdimCustomHue });
+});
+
+// ═══════════════════════════════════
+//  X Focus Mode
+// ═══════════════════════════════════
+const xfocusToggle = document.getElementById("xfocusToggle");
+const xfocusStatus = document.getElementById("xfocusStatus");
+
+async function loadXFocus() {
+  const data = await chrome.storage.local.get(["xfocus_enabled"]);
+  const enabled = !!data.xfocus_enabled;
+  xfocusToggle.checked = enabled;
+  updateXFocusUI(enabled);
+}
+
+function updateXFocusUI(on) {
+  xfocusStatus.textContent = on ? "ON" : "OFF";
+  xfocusStatus.className = "status " + (on ? "on" : "off");
+}
+
+xfocusToggle.addEventListener("change", async () => {
+  const enabled = xfocusToggle.checked;
+  updateXFocusUI(enabled);
+  await chrome.storage.local.set({ xfocus_enabled: enabled });
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab) {
+    chrome.tabs.sendMessage(tab.id, { type: "xfocus_toggle", enabled }).catch(() => {});
+  }
 });
 
 // ═══════════════════════════════════
@@ -1556,6 +1587,332 @@ function renderSummary(text) {
 function fmtInline(s) {
   return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
 }
+
+// ═══════════════════════════════════
+//  Data tab: page localStorage + chrome.storage.local
+// ═══════════════════════════════════
+const pageLStorageSummary = document.getElementById("pageLStorageSummary");
+const pageLStorageList = document.getElementById("pageLStorageList");
+const pageLStorageImportArea = document.getElementById("pageLStorageImportArea");
+const btnPageLRefresh = document.getElementById("btnPageLRefresh");
+const btnPageLCopy = document.getElementById("btnPageLCopy");
+const btnPageLClear = document.getElementById("btnPageLClear");
+const btnPageLImport = document.getElementById("btnPageLImport");
+
+const storageSummaryEl = document.getElementById("storageSummary");
+const storageListEl = document.getElementById("storageList");
+const storageImportArea = document.getElementById("storageImportArea");
+const btnStorageExport = document.getElementById("btnStorageExport");
+const btnStorageClear = document.getElementById("btnStorageClear");
+const btnStorageImport = document.getElementById("btnStorageImport");
+
+/** last snapshot from active tab (for copy); cleared when not applicable. */
+let lastPageLData = null;
+
+function storageValueBytes(v) {
+  try {
+    return new Blob([JSON.stringify(v)]).size;
+  } catch {
+    return String(v).length;
+  }
+}
+
+function formatStorageSize(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+  return (n / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function previewVal(v, max) {
+  const s = v == null ? "" : String(v);
+  if (s.length <= max) return s;
+  return s.slice(0, max) + "…";
+}
+
+function canInjectPageStorage(url) {
+  return url && /^https?:/i.test(url);
+}
+
+async function getActiveTabId() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab;
+}
+
+/**
+ * window.localStorage for the current tab (MAIN world, same as the page’s own scripts).
+ */
+async function loadPageLocalStorage() {
+  lastPageLData = null;
+  pageLStorageSummary.textContent = "Loading…";
+  pageLStorageList.innerHTML = "";
+
+  const tab = await getActiveTabId();
+  if (!tab) {
+    pageLStorageSummary.textContent = "No active tab.";
+    return;
+  }
+  if (!canInjectPageStorage(tab.url)) {
+    pageLStorageSummary.textContent =
+      "Not available — open a normal http:// or https:// page (this tab is internal or not injectable).";
+    pageLStorageList.innerHTML = '<div class="empty">—</div>';
+    return;
+  }
+
+  let execResult;
+  try {
+    [execResult] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      world: "MAIN",
+      func: () => {
+        const data = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          data[k] = localStorage.getItem(k);
+        }
+        return { origin: location.origin, data };
+      },
+    });
+  } catch (e) {
+    pageLStorageSummary.textContent =
+      "Cannot read this page — " + (e && e.message ? e.message : "restricted or unavailable");
+    pageLStorageList.innerHTML = '<div class="empty">—</div>';
+    return;
+  }
+
+  const payload = execResult && execResult.result;
+  if (!payload || !payload.data) {
+    pageLStorageSummary.textContent = "No data returned.";
+    return;
+  }
+
+  const { origin, data } = payload;
+  lastPageLData = data;
+  const keys = Object.keys(data).sort();
+  let total = 0;
+  for (const k of keys) {
+    const v = data[k] || "";
+    total += k.length + v.length;
+  }
+  pageLStorageSummary.textContent = `${origin} — ${keys.length} key${
+    keys.length === 1 ? "" : "s"
+  } · ~${formatStorageSize(total)}`;
+
+  if (!keys.length) {
+    pageLStorageList.innerHTML = '<div class="empty">No keys in this page’s localStorage</div>';
+    return;
+  }
+
+  pageLStorageList.innerHTML = keys
+    .map((k) => {
+      const val = data[k] || "";
+      return `<div class="item page-ls-item"><div>
+        <div class="page-ls-key">${esc(k)}</div>
+        <div class="page-ls-val" title="${escA(val)}">${esc(previewVal(val, 200))}</div>
+      </div>
+      <button type="button" data-page-ls-key="${escA(k)}">&times;</button></div>`;
+    })
+    .join("");
+
+  pageLStorageList.querySelectorAll("button[data-page-ls-key]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const k = btn.getAttribute("data-page-ls-key");
+      const t = await getActiveTabId();
+      if (!t || !t.id || !canInjectPageStorage(t.url)) return;
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: t.id },
+          world: "MAIN",
+          func: (key) => {
+            localStorage.removeItem(key);
+          },
+          args: [k],
+        });
+        await loadPageLocalStorage();
+      } catch (err) {
+        alert("Could not remove key: " + (err && err.message ? err.message : String(err)));
+      }
+    });
+  });
+}
+
+async function loadExtensionStorage() {
+  const all = await chrome.storage.local.get(null);
+  const keys = Object.keys(all).sort();
+  let total = 0;
+  const rows = keys.map((k) => {
+    const sz = storageValueBytes(all[k]);
+    total += sz;
+    return { key: k, size: sz };
+  });
+  storageSummaryEl.textContent = `${keys.length} key${
+    keys.length === 1 ? "" : "s"
+  } · ~${formatStorageSize(total)}`;
+  if (!keys.length) {
+    storageListEl.innerHTML = '<div class="empty">No data in chrome.storage.local</div>';
+    return;
+  }
+  storageListEl.innerHTML = rows
+    .map(
+      (r) =>
+        `<div class="item"><span title="${escA(r.key)}">${esc(
+          r.key
+        )} <span style="color:#666">(${formatStorageSize(r.size)})</span></span><button type="button" data-del-key="${escA(
+          r.key
+        )}">&times;</button></div>`
+    )
+    .join("");
+  storageListEl.querySelectorAll("button[data-del-key]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      chrome.storage.local.remove(btn.getAttribute("data-del-key"), () => {
+        loadExtensionStorage();
+      });
+    });
+  });
+}
+
+async function loadStorage() {
+  await loadPageLocalStorage();
+  await loadExtensionStorage();
+}
+
+btnPageLRefresh.addEventListener("click", () => {
+  loadPageLocalStorage();
+});
+
+btnPageLCopy.addEventListener("click", async () => {
+  if (lastPageLData === null) {
+    alert("Nothing to copy — refresh the page list first, or use an injectable http(s) tab.");
+    return;
+  }
+  const json = JSON.stringify(lastPageLData, null, 2);
+  try {
+    await navigator.clipboard.writeText(json);
+  } catch {
+    prompt("Copy (clipboard unavailable):", json);
+    return;
+  }
+  const label = btnPageLCopy.textContent;
+  btnPageLCopy.textContent = "Copied!";
+  setTimeout(() => {
+    btnPageLCopy.textContent = label;
+  }, 1500);
+});
+
+btnPageLClear.addEventListener("click", async () => {
+  if (!confirm("Clear this site’s localStorage in the active tab? This only affects the page, not the extension.")) {
+    return;
+  }
+  const tab = await getActiveTabId();
+  if (!tab || !tab.id || !canInjectPageStorage(tab.url)) return;
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      world: "MAIN",
+      func: () => {
+        localStorage.clear();
+      },
+    });
+    await loadPageLocalStorage();
+  } catch (e) {
+    alert("Could not clear: " + (e && e.message ? e.message : String(e)));
+  }
+});
+
+btnPageLImport.addEventListener("click", async () => {
+  const raw = pageLStorageImportArea.value.trim();
+  if (!raw) return;
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    alert("Invalid JSON.");
+    return;
+  }
+  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+    alert("Root JSON value must be a plain object.");
+    return;
+  }
+  const tab = await getActiveTabId();
+  if (!tab || !tab.id || !canInjectPageStorage(tab.url)) {
+    alert("Open an injectable http(s) page first.");
+    return;
+  }
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      world: "MAIN",
+      func: (o) => {
+        for (const key of Object.keys(o)) {
+          const v = o[key];
+          const s = v == null ? "" : typeof v === "string" ? v : String(v);
+          localStorage.setItem(key, s);
+        }
+      },
+      args: [obj],
+    });
+    pageLStorageImportArea.value = "";
+    await loadPageLocalStorage();
+  } catch (e) {
+    alert("Import failed: " + (e && e.message ? e.message : String(e)));
+  }
+});
+
+btnStorageExport.addEventListener("click", async () => {
+  const all = await chrome.storage.local.get(null);
+  const json = JSON.stringify(all, null, 2);
+  try {
+    await navigator.clipboard.writeText(json);
+  } catch {
+    prompt("Copy this JSON (clipboard unavailable):", json);
+    return;
+  }
+  const label = btnStorageExport.textContent;
+  btnStorageExport.textContent = "Copied!";
+  setTimeout(() => {
+    btnStorageExport.textContent = label;
+  }, 1500);
+});
+
+btnStorageClear.addEventListener("click", () => {
+  if (
+    !confirm(
+      "Delete ALL extension keys in chrome.storage.local? The extension will reset to defaults. This cannot be undone."
+    )
+  ) {
+    return;
+  }
+  chrome.storage.local.clear(() => {
+    loadExtensionStorage();
+  });
+});
+
+btnStorageImport.addEventListener("click", async () => {
+  const raw = storageImportArea.value.trim();
+  if (!raw) return;
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    alert("Invalid JSON.");
+    return;
+  }
+  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+    alert("Root JSON value must be a plain object with string keys.");
+    return;
+  }
+  try {
+    await chrome.storage.local.set(obj);
+    storageImportArea.value = "";
+    await loadExtensionStorage();
+  } catch (e) {
+    alert("Import failed: " + (e && e.message ? e.message : String(e)));
+  }
+});
+
+chrome.storage.onChanged.addListener(() => {
+  const active = document.querySelector(".nav button.active");
+  if (active && active.dataset.page === "storage") loadExtensionStorage();
+});
 
 // ═══════════════════════════════════
 //  Helpers

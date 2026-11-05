@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "🚀 SuperLevels",
-  "version": "2.0",
-  "description": "The super Chrome extension by @levelsio — dark mode, GDPR cookie dismisser, YouTube unhook, tab cleaner, cookie editor, redirect tracer, live CSS editor, X/Twitter dim mode, JS toggle, JSON formatter, music recognizer, picture-in-picture, Google Maps links, view image, Photopea ad remover, TikTok login skipper, and archive.is auto-redirect for paywalled articles.",
+  "version": "2.2",
+  "description": "The super Chrome extension by @levelsio — dark mode, GDPR cookie dismisser, YouTube unhook, tab cleaner, cookie editor, redirect tracer, live CSS editor, X/Twitter dim mode, X focus mode, JS toggle, JSON formatter, music recognizer, picture-in-picture, Google Maps links, view image, Photopea ad remover, TikTok login skipper, and archive.is auto-redirect for paywalled articles.",
   "permissions": ["tabs", "storage", "alarms", "cookies", "activeTab", "webRequest", "webNavigation", "tabCapture", "contentSettings", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -26,7 +26,7 @@
     "run_at": "document_start"
   }, {
     "matches": ["*://x.com/*", "*://twitter.com/*", "*://mobile.x.com/*", "*://mobile.twitter.com/*"],
-    "js": ["xdim.js", "xunhook.js", "xreply.js"],
+    "js": ["xdim.js", "xunhook.js", "xreply.js", "xfocus.js", "xfollowing.js"],
     "run_at": "document_start"
   }, {
     "matches": ["*://www.photopea.com/*", "*://photopea.com/*"],

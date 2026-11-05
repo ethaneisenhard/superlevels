@@ -164,6 +164,50 @@
       color: #555; font-size: 12px; text-align: center; padding: 12px;
     }
 
+    /* ── Local storage manager ── */
+    .storage-summary {
+      margin-bottom: 10px; padding: 8px 12px; background: #16213e;
+      border-radius: 8px; font-size: 12px; color: #aaa;
+    }
+    .storage-actions {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+    }
+    .storage-actions button {
+      padding: 6px 12px; background: #0f3460; color: #e0e0e0; border: 1px solid #2a2a4a;
+      border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .storage-actions button.danger { background: #2a1020; border-color: #e94560; color: #e94560; }
+    .storage-actions button:hover { filter: brightness(1.12); }
+    .storage-list .item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; background: #16213e; border-radius: 6px;
+      margin-bottom: 4px; font-size: 12px; gap: 8px;
+    }
+    .storage-list .item span { word-break: break-all; min-width: 0; }
+    .storage-list .item button {
+      background: none; border: none; color: #e94560; font-size: 16px;
+      cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
+    }
+    .storage-list .item button:hover { color: #ff6b81; }
+    .storage-import label { display: block; font-size: 11px; color: #888; margin-bottom: 6px; }
+    .storage-import textarea {
+      width: 100%; min-height: 80px; padding: 8px; background: #0f1e3d;
+      border: 1px solid #2a2a4a; border-radius: 6px; color: #ddd; font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical;
+    }
+    .storage-import textarea:focus { outline: none; border-color: #e94560; }
+    .storage-hint { font-size: 11px; color: #666; margin-top: 10px; line-height: 1.45; }
+    .storage-section-title {
+      margin-top: 20px; padding-top: 16px; border-top: 1px solid #2a2a4a;
+    }
+    .page-ls-item .page-ls-key { font-weight: 600; font-size: 12px; }
+    .page-ls-item .page-ls-val {
+      font-size: 11px; color: #9a9ab0; font-family: ui-monospace, Menlo, monospace;
+      max-height: 2.6em; overflow: hidden; margin-top: 2px; word-break: break-all;
+    }
+    .page-ls-item { align-items: flex-start !important; }
+    .page-ls-item > div { min-width: 0; flex: 1; }
+
     /* ── Cookie Editor ── */
     .cookie-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -472,6 +516,28 @@
       padding: 8px; line-height: 1.5;
     }
 
+    /* ── X Focus Mode ── */
+    .xfocus-big-toggle {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 24px 0 16px; gap: 12px;
+    }
+    .xfocus-big-toggle .xfocus-icon {
+      font-size: 44px; line-height: 1; font-weight: 800;
+      font-family: -apple-system, sans-serif;
+    }
+    .xfocus-features {
+      padding: 0;
+    }
+    .xfocus-feature {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; background: #16213e;
+      border-radius: 8px; margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .xfocus-feature .check {
+      color: #4caf50; font-size: 14px; flex-shrink: 0;
+    }
+
     /* ── Cookie Consent (GDPR) ── */
     .nocookie-big-toggle {
       display: flex; flex-direction: column; align-items: center;
@@ -761,6 +827,7 @@
     <button data-page="xdim">𝕏 Dim</button>
     <button data-page="xunhook">𝕏 Unhook</button>
     <button data-page="xreply">𝕏 Reply</button>
+    <button data-page="xfocus">✍️ X</button>
     <button data-page="photopea">🫛 Photopea</button>
     <button data-page="tiktok">🎶 TikTok</button>
     <button data-page="archive">🗄 No paywall</button>
@@ -772,6 +839,7 @@
     <button data-page="summarize">✨ Summarize</button>
     <button data-page="pip">🖼 PiP</button>
     <button data-page="jsonformat">{} JSON</button>
+    <button data-page="storage">💾 Data</button>
   </div>
 
   <!-- ═══ Tab Cleaner Page ═══ -->
@@ -1050,6 +1118,33 @@
     </div>
   </div>
 
+  <!-- ═══ X Focus Mode Page ═══ -->
+  <div class="page" id="page-xfocus">
+    <div class="page-body">
+      <div class="xfocus-big-toggle">
+        <div class="xfocus-icon">✍️</div>
+        <label class="big-switch">
+          <input type="checkbox" id="xfocusToggle">
+          <span class="big-slider"></span>
+        </label>
+        <div class="status off" id="xfocusStatus">OFF</div>
+      </div>
+
+      <div class="xfocus-features">
+        <div class="xfocus-feature"><span class="check">✓</span> Hides the home timeline</div>
+        <div class="xfocus-feature"><span class="check">✓</span> Hides trends and sidebars</div>
+        <div class="xfocus-feature"><span class="check">✓</span> Keeps the post composer visible</div>
+        <div class="xfocus-feature"><span class="check">✓</span> Keeps the New Post button usable</div>
+      </div>
+
+      <div class="xdim-note" style="margin-top:10px">
+        Turns X / Twitter into a write-only screen.<br>
+        If the inline composer is not visible, use the Post button.
+      </div>
+    </div>
+  </div>
+
+
   <!-- ═══ Cookie Consent (GDPR) Page ═══ -->
   <div class="page" id="page-nocookie">
     <div class="page-body">
@@ -1265,6 +1360,53 @@
         Only triggers on actual JSON responses.<br>
         Regular HTML pages are never affected.
       </div>
+    </div>
+  </div>
+
+  <!-- ═══ Data: page localStorage + extension storage ═══ -->
+  <div class="page" id="page-storage">
+    <div class="page-body">
+      <h2>This page — <code style="font-size:11px">localStorage</code></h2>
+      <p class="storage-summary" id="pageLStorageSummary">…</p>
+      <div class="storage-actions">
+        <button type="button" id="btnPageLRefresh" title="Re-read the active tab">Refresh</button>
+        <button type="button" id="btnPageLCopy" title="Copy as JSON">Copy JSON</button>
+        <button type="button" id="btnPageLClear" class="danger" title="localStorage.clear() for this site">Clear all</button>
+      </div>
+      <h2>Keys &amp; values</h2>
+      <div class="exc-list storage-list" id="pageLStorageList"></div>
+      <h2 style="margin-top:14px">Import into page (merge)</h2>
+      <div class="storage-import">
+        <label for="pageLStorageImportArea">JSON object. String values are set as-is; other types are String()-converted.</label>
+        <textarea id="pageLStorageImportArea" placeholder='{"myKey": "value"}'></textarea>
+        <div class="storage-actions" style="margin-top:8px">
+          <button type="button" id="btnPageLImport">Merge into page</button>
+        </div>
+      </div>
+      <p class="storage-hint">
+        Uses the <b>active tab</b>’s page context (injected, main world). Only works on normal <code style="font-size:10px">http(s)</code> pages — not <code style="font-size:10px">chrome://</code>, PDF, or the Web Store.
+      </p>
+
+      <h2 class="storage-section-title">Extension — <code style="font-size:11px">chrome.storage.local</code></h2>
+      <p class="storage-summary" id="storageSummary">Loading…</p>
+      <div class="storage-actions">
+        <button type="button" id="btnStorageExport" title="Copy all keys and values as JSON">Copy JSON</button>
+        <button type="button" id="btnStorageClear" class="danger" title="Remove every key">Clear all</button>
+      </div>
+      <h2>Keys</h2>
+      <div class="exc-list storage-list" id="storageList"></div>
+      <h2 style="margin-top:14px">Import (merge)</h2>
+      <div class="storage-import">
+        <label for="storageImportArea">Paste a JSON object. Keys are merged into storage (overwrites same keys).</label>
+        <textarea id="storageImportArea" placeholder='{"exclusions": []}'></textarea>
+        <div class="storage-actions" style="margin-top:8px">
+          <button type="button" id="btnStorageImport">Merge import</button>
+        </div>
+      </div>
+      <p class="storage-hint">
+        Data used by the extension (tab cleaner, last tab, dark mode, ACR keys, etc.).
+        Deleting a key resets that feature to defaults on next use where applicable.
+      </p>
     </div>
   </div>
 
